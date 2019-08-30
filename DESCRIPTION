@@ -12,5 +12,6 @@ LazyData: true
 Imports: 
     fst,
     fs,
-    rlang
+    rlang,
+    codetools
 RoxygenNote: 6.1.1

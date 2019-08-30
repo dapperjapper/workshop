@@ -13,12 +13,14 @@ target("data/raw_data", function() {
 
 target("data/analysis", function(
   # Creates dependency structure -- loan_target from within script is outlawed
-  raw_data = load_target("data/raw_data"),
+  raw_data = dep_target("data/raw_data"),
   # Explicit demarkation of dependencies from global env
-  local_var = local()
+  local_var = dep_local()
 ) {
-  print(exists("local_var"))
-  print(exists("x"))
+  print(exists("local_var")) # yes
+  print(exists("x")) # no, not specified
+  print(local_var + 8)
+  test <- 8 + local_var
   # Need any external functions used (that are not from packages) to be specifically
   # called out?
   helper()
