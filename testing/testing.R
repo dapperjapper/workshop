@@ -12,7 +12,7 @@ target("data/raw_data", function() {
 })
 
 target("data/analysis", function(
-  # Creates dependency structure -- loan_target from within script is outlawed
+  # Creates dependency structure -- loan_target from within method is outlawed
   raw_data = dep_target("data/raw_data"),
   # Explicit demarkation of dependencies from global env
   local_var = dep_local()
@@ -36,18 +36,18 @@ batch_targets("data/batch_files/:name", function(...) {
 
 #' PURITY
 #'
-#' What is allowed inside of target scripts:
+#' What is allowed inside of target methods:
 #' - Explicitly specified dependencies
 #'   - Objects                                Invalidated through inequality
 #'   - File paths                             Invalidated through file modified dates
 #'   - Other targets                          Invalidated recursively
 #'   - Dirty functions from devtools shim /   Must specify cache invalidation method
-#'     script source environment
+#'     method source environment
 #' - Functions from packages                  Invalidated through package versioning
 #' - Pure functions from devtools shim /      Invalidated through recursive code analysis
-#'   script source environment
+#'   method source environment
 #'
-#' What is not allowed inside of target scripts:
-#' - Unspecified non-function objects from script source environment
+#' What is not allowed inside of target methods:
+#' - Unspecified non-function objects from method source environment
 #' - Loading from unspecified file paths
 #' - Other targets
