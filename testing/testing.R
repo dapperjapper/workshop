@@ -1,9 +1,25 @@
 local_var <- 4
 x <- "no"
 
-helper <- function() {
+helper <- function(x, y) {
   print("helper")
+  round(x + y)
 }
+
+impure_helper <- function(y, x) {
+  local_var + x
+}
+
+local({
+  helperhelper <- function () {
+    2
+  }
+  helper2 <- function(x, y) {
+    print("helper")
+    round(helper(x, y) + helperhelper())
+  }
+  purify_function(helper2)
+})
 
 target("data/raw_data", function() {
   print(exists("local_var"))
@@ -23,7 +39,7 @@ target("data/analysis", function(
   test <- 8 + local_var
   # Need any external functions used (that are not from packages) to be specifically
   # called out?
-  helper()
+  helper(test, local_var)
   return(length(raw_data) + local_var)
 })
 
