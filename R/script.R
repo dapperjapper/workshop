@@ -56,7 +56,7 @@ process_method_args <- function(args, method_env) {
 }
 
 #' @importFrom rlang new_environment env_name is_primitive env_parents empty_env
-#' @importFrom purrr map_chr
+#' @importFrom purrr map_chr discard
 #' @importFrom codetools findGlobals
 #' @importFrom pryr where
 #' @importFrom stringr str_remove str_detect
@@ -86,7 +86,7 @@ purify_function <- function(func, ignore_arg_defaults = T) {
     map(function(var) {
       if (!exists(var, envir = func_env)) {
         warning("Function refers to ", var, " which doesn't exist in environment")
-        return(list(value = NULL, trackables = "(unknown)"))
+        return(list(value = NULL, trackables = "(missing)"))
       }
       var_val <- get(var, envir = func_env)
       # var_env <- where(var, env = func_env)
@@ -98,7 +98,7 @@ purify_function <- function(func, ignore_arg_defaults = T) {
         return(purify_function(var_val, ignore_arg_defaults = F))
       } else if (exists(var, envir = func_env, inherits = F)) {
         # If name is defined in func_env and is not a function, bad
-        stop("Function refers to external non-package variable ", var, " which is not imported")
+        stop("Function refers to external non-package variable `", var, "` which is not imported")
       } else if (is_primitive(var_val)) {
         # If it's just a primitive, don't worry about it
         return(list(value = var_val, trackables = "(primitive)"))
@@ -131,19 +131,24 @@ purify_function <- function(func, ignore_arg_defaults = T) {
       }
     })
 
-  # browser()
   # TODO: globals_to_embed = everything from globals that isn't in an environment that's
-  # a parent of new_env_base
+  # a parent of new_env_base. Or, just move everything and have new_env_base be the empty
+  # env? Need to test speed...
 
   # Load globals into function environment so it can access those and *only* those
   environment(func) <- new_environment(data = map(globals, "value"), parent = new_env_base)
+
   # Purified function and trackables
   return(list(
     value = func,
     trackables = list(
       body = body(func),
       formals = formals(func),
-      globals = map(globals, "trackables")
+      globals = map(globals, "trackables") %>%
+        # The character trackables are either "(missing)"
+        # or "(primitive)" which are useful for debugging
+        # but not actually needed for tracking.
+        discard(is.character)
     )
   ))
 }
