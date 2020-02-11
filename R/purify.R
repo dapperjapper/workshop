@@ -7,9 +7,7 @@ purify_function <- function(func, ignore_arg_defaults = T) {
 
   # TODO: function "blacklist" that will throw an error if discovered
   # recursively within the function. Comes coupled with namespace, so
-  # readr::write_csv will error out but globally namespaced write_csv
-  # won't
-
+  # readr::write_csv will error out but globally namespaced write_csv won't.
   # Function blacklist is necessary to prevent user from breaking purity.
 
   func_env <- environment(func)
@@ -18,7 +16,10 @@ purify_function <- function(func, ignore_arg_defaults = T) {
   # CODE ANALYSIS (THIS IS THE HARD PART)
   globals <- findGlobals(func)
 
-  # If we don't do this, complains that
+  # If we don't do this, complains that `dep_target` (for example)
+  # doesn't exist in the environment. This is because we are blurring
+  # the distinction between `method` (a specialized function written
+  # to make a target) and a function more generally.
   if (ignore_arg_defaults) {
     # TODO: clunky; need to just ignore func formals to begin with
     globals <- setdiff(globals, c("dep_target", "dep_local", "dep_file"))

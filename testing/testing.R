@@ -28,7 +28,7 @@ target("data/raw_data", function() {
 })
 
 target("data/analysis", function(
-  # Creates dependency structure -- loan_target from within method is outlawed
+  # Creates dependency structure -- load_target from within method is outlawed
   raw_data = dep_target("data/raw_data"),
   # Explicit demarkation of dependencies from global env
   local_var = dep_local()

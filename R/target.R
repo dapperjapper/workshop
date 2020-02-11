@@ -19,7 +19,7 @@ target <- function(filepath, method, cache = get_cache()) {
   target_hash <- read_cache(cache)$targets[[filepath]]$hash
 
   if (length(target_hash) && target_hash == digest(pure_method$trackables)) {
-    cat("Target `", filepath, "` does not need updating. ", sample(encouragement, 1), "\n", sep = "")
+    cat("Target `", filepath, "` is up to date. ", sample(encouragement, 1), "\n", sep = "")
     # TODO: return?
   } else {
     # If needs freshening up, rerun the method and save the results!
