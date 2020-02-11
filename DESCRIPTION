@@ -13,6 +13,7 @@ Imports:
     fs,
     rlang,
     codetools,
-    stringr
+    stringr,
+    digest
 Suggests: fst
 RoxygenNote: 6.1.1

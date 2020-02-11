@@ -1,6 +1,7 @@
 #' @importFrom tibble tibble
+#' @importFrom digest digest
 #' @export
-target <- function(filepath, method) {
+target <- function(filepath, method, cache = get_cache()) {
 
   # Process method's args according to special arg syntax
   args <- formals(method) %>% process_method_args(environment(method))
@@ -15,11 +16,31 @@ target <- function(filepath, method) {
   #   3a. Just check package versions
   #   3b. For local functions (or devtools shim functions),
   #       need to recursively track code!
+  target_hash <- read_cache(cache)$targets[[filepath]]$hash
 
-  result <- do.call(pure_method$value, args)
+  if (length(target_hash) && target_hash == digest(pure_method$trackables)) {
+    cat("Target `", filepath, "` does not need updating. ", sample(encouragement, 1), "\n", sep = "")
+    # TODO: return?
+  } else {
+    # If needs freshening up, rerun the method and save the results!
+    start_time <- Sys.time()
+    result <- do.call(pure_method$value, args)
+    end_time <- Sys.time()
 
-  save_target_result(filepath, result)
-  return(result)
+    save_target_result(filepath, result)
+    update_cache(
+      filepath,
+      cache = cache,
+      cache_val = list(
+        hash = digest(pure_method$trackables),
+        metadata = list(
+          elapsed = end_time - start_time
+        )
+      )
+    )
+    return(result)
+  }
+
 }
 
 #' @importFrom purrr imap map "%>%"
@@ -55,3 +76,10 @@ process_method_args <- function(args, method_env) {
   })
 }
 
+encouragement <- c(
+  "Huzzah!",
+  "Great news :)",
+  "Good job.",
+  "Nice work.",
+  "Chill B^)"
+)
