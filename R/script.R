@@ -149,26 +149,31 @@ purify_function <- function(func, ignore_arg_defaults = T) {
 }
 
 #' @importFrom readr write_rds
-#' @importFrom fst read_fst write_fst
 #' @importFrom fs path_ext_set path_dir dir_create path_ext
-#' @importFrom dplyr case_when
 save_target_result <- function(filepath, result) {
 
-  ext <- case_when(
+  fst_available <- requireNamespace("pkg", quietly = TRUE)
+
+  if (path_ext(filepath) != "") {
     # If file format is specified, use it
-    path_ext(filepath) != "" ~ path_ext(filepath),
+    ext <- path_ext(filepath)
+  } else if (is.data.frame(result) && fst_available) {
     # Data frames get fst by default
-    is.data.frame(result) ~ "fst",
+    ext <- "fst"
+  } else {
     # Use RDS as a catch-all
-    TRUE ~ "rds"
-  )
+    ext <- "rds"
+  }
 
   filepath <- path_ext_set(filepath, ext)
   dir_create(path_dir(filepath))
 
   metadata <- list(ext = ext)
   if (ext == "fst") {
-    write_fst(result, filepath)
+    if (!fst_available) {
+      error("Install fst before trying to use it for targets!")
+    }
+    fst::write_fst(result, filepath)
     metadata$orig_class <- class(result)
     # Is there anything else that isn't preserved by fst?
   } else if (ext == "rds") {
