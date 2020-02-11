@@ -6,7 +6,7 @@ target <- function(filepath, method) {
   args <- formals(method) %>% process_method_args(environment(method))
 
   # Process method's dependencies that aren't explicitly specified as args
-  pure_method <- purify_function(method, ignore_arg_defaults = T)
+  pure_method <- purify_function(method)
 
   # Determine if method needs to be re-run. Need to check:
   # 1. The code of the method itself
@@ -55,10 +55,12 @@ process_method_args <- function(args, method_env) {
   })
 }
 
-#' @importFrom rlang new_environment
+#' @importFrom rlang new_environment env_name is_primitive env_parents empty_env
+#' @importFrom purrr map_chr
 #' @importFrom codetools findGlobals
 #' @importFrom pryr where
-purify_function <- function(func, ignore_arg_defaults = F) {
+#' @importFrom stringr str_remove str_detect
+purify_function <- function(func, ignore_arg_defaults = T) {
 
   # TODO: function "blacklist" that will throw an error if discovered
   # recursively within the function. Comes coupled with namespace, so
@@ -68,9 +70,12 @@ purify_function <- function(func, ignore_arg_defaults = F) {
   # Function blacklist is necessary to prevent user from breaking purity.
 
   func_env <- environment(func)
-  new_env_base <- parent.env(globalenv())
+  new_env_base <- empty_env() # parent.env(globalenv())
 
+  # CODE ANALYSIS (THIS IS THE HARD PART)
   globals <- findGlobals(func)
+
+  # If we don't do this, complains that
   if (ignore_arg_defaults) {
     # TODO: clunky; need to just ignore func formals to begin with
     globals <- setdiff(globals, c("dep_target", "dep_local", "dep_file"))
@@ -80,7 +85,8 @@ purify_function <- function(func, ignore_arg_defaults = F) {
     set_names() %>%
     map(function(var) {
       if (!exists(var, envir = func_env)) {
-        stop("Function refers to ", var, " which doesn't exist in environment")
+        warning("Function refers to ", var, " which doesn't exist in environment")
+        return(list(value = NULL, trackables = "(unknown)"))
       }
       var_val <- get(var, envir = func_env)
       # var_env <- where(var, env = func_env)
@@ -89,14 +95,39 @@ purify_function <- function(func, ignore_arg_defaults = F) {
 
       if (exists(var, envir = func_env, inherits = F) & is_function(var_val)) {
         # If name is defined in func_env and is a function, recursively enforce purity
-        return(purify_function(var_val))
+        return(purify_function(var_val, ignore_arg_defaults = F))
       } else if (exists(var, envir = func_env, inherits = F)) {
         # If name is defined in func_env and is not a function, bad
         stop("Function refers to external non-package variable ", var, " which is not imported")
+      } else if (is_primitive(var_val)) {
+        # If it's just a primitive, don't worry about it
+        return(list(value = var_val, trackables = "(primitive)"))
       } else {
-        # If name is defined in new_env, cache package info
-        # TODO: do something with environment(var_val) which should return a namespace:pkg
-        return(list(value = var_val, extracts = NULL))
+        # If name is defined outside func_env, cache package info
+
+        package_name <- environment(var_val) %>%
+          # Some functions are imported from other packages through some weird
+          # mechanisms (see `%>%` in purrr) so we must traverse up thru
+          # environments to see where it comes from.
+          c(
+            .,
+            env_parents(.)
+          ) %>%
+          map_chr(env_name) %>%
+          # Take the highest level environment with a namespace signifier
+          .[which(str_detect(., "^namespace:"))] %>%
+          head(1) %>%
+          str_remove("^namespace:")
+
+        if (!length(package_name) || package_name == "") {
+          stop("Could not find source package for function `", var, "` to track dependency...")
+        }
+
+        # TODO: track things better than just version?
+        return(list(value = var_val, trackables = list(
+          package = package_name,
+          version = packageVersion(package_name)
+        )))
       }
     })
 
@@ -104,12 +135,15 @@ purify_function <- function(func, ignore_arg_defaults = F) {
   # TODO: globals_to_embed = everything from globals that isn't in an environment that's
   # a parent of new_env_base
 
+  # Load globals into function environment so it can access those and *only* those
   environment(func) <- new_environment(data = map(globals, "value"), parent = new_env_base)
+  # Purified function and trackables
   return(list(
     value = func,
-    extracts = list(
-      pure_func = func,
-      globals = map(globals, "extracts")
+    trackables = list(
+      body = body(func),
+      formals = formals(func),
+      globals = map(globals, "trackables")
     )
   ))
 }
