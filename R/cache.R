@@ -1,6 +1,7 @@
 #' @importFrom fs file_create file_exists
 #' @export
 get_cache <- function(path = ".workshop") {
+  # TODO config session cache? so don't have to specify with every target
   dir_create(path_dir(path))
   if (!file_exists(path)) {
     write_rds(list(cache_version = "0.01", targets = list()), path)

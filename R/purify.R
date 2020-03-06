@@ -22,11 +22,12 @@ purify_function <- function(func, ignore_arg_defaults = T) {
   # to make a target) and a function more generally.
   if (ignore_arg_defaults) {
     # TODO: clunky; need to just ignore func formals to begin with
-    globals <- setdiff(globals, c("dep_target", "dep_local", "dep_file"))
+    globals <- setdiff(globals, c("dep_target", "dep_local", "dep_file", "dimension", "save_target", ".dimensions"))
   }
 
   globals <- globals %>%
     set_names() %>%
+    # TODO: drop primitives?
     map(function(var) {
       if (!exists(var, envir = func_env)) {
         warning("Function refers to ", var, " which doesn't exist in environment")
@@ -37,18 +38,29 @@ purify_function <- function(func, ignore_arg_defaults = T) {
       # TODO: better methodology for figuring out if func comes from package
       # TODO: detect if var_env is a devtools package
 
-      if (exists(var, envir = func_env, inherits = F) & is_function(var_val)) {
+      if (!is_function(var_val)) {
+        # If name is not a function, bad
+        stop("Function refers to external non-function variable `", var, "` which is not imported")
+      } else if (exists(var, envir = func_env, inherits = F)) {
         # If name is defined in func_env and is a function, recursively enforce purity
         return(purify_function(var_val, ignore_arg_defaults = F))
-      } else if (exists(var, envir = func_env, inherits = F)) {
-        # If name is defined in func_env and is not a function, bad
-        stop("Function refers to external non-package variable `", var, "` which is not imported")
       } else if (is_primitive(var_val)) {
         # If it's just a primitive, don't worry about it
         return(list(value = var_val, trackables = "(primitive)"))
       } else {
         # If name is defined outside func_env, cache package info
 
+        # TODO: maybe we can track down the package for non-functions as well??
+        # we can't use environment(var_val) but maybe we can look at the defining env??
+        # defining_env <- NULL
+        # for (env in env_parents(func_env, last = NULL)) {
+        #   print(exists(var, envir = env, inherits = F))
+        #   if (exists(var, envir = env, inherits = F)) {
+        #     print(env)
+        #     defining_env <- env
+        #     break
+        #   }
+        # }
         package_name <- environment(var_val) %>%
           # Some functions are imported from other packages through some weird
           # mechanisms (see `%>%` in purrr) so we must traverse up thru
@@ -87,7 +99,6 @@ purify_function <- function(func, ignore_arg_defaults = T) {
     value = func,
     trackables = list(
       body = body(func),
-      formals = formals(func),
       globals = map(globals, "trackables") %>%
         # The character trackables are either "(missing)"
         # or "(primitive)" which are useful for debugging
@@ -96,3 +107,4 @@ purify_function <- function(func, ignore_arg_defaults = T) {
     )
   ))
 }
+
