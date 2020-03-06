@@ -15,7 +15,7 @@ print.workshop_cache <- function(cache) {
 }
 
 #' @importFrom readr read_rds
-read_cache <- function(cache) {
+read_cache <- function(cache = get_cache()) {
   readRDS(cache$path)
 }
 

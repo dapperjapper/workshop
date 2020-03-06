@@ -75,7 +75,7 @@ target <- function(filepath_spec, method, cache = get_cache()) {
 
     # Return if target is up to date
     if (length(target_hash) && target_hash == trackables_hash) {
-      cat("Target `", filepath, "` is up to date. ", sample(encouragement, 1), "\n", sep = "")
+      cat("Target `", filepath_spec_partial, "` is up to date. ", sample(encouragement, 1), "\n", sep = "")
       return()
     }
 
@@ -87,21 +87,6 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     save_target <- function(result, ...) {
       filepath <- encode_spec(list(...), filepath_spec_partial)
       save_target_result(filepath, result)
-
-      update_cache(
-        filepath,
-        cache = cache,
-        cache_val = list(
-          hash = trackables_hash,
-          metadata = list(
-            elapsed = Sys.time() - start_time
-          )
-        )
-      )
-      # Double assignment so start_time is redefined
-      # at a scope above. So, next time save_target is run,
-      # the start_time will have changed
-      start_time <<- Sys.time()
     }
 
     # Special values for use inside method
@@ -112,10 +97,23 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     )
 
     # Git 'r dun
+    cat("Running target `", filepath_spec_partial, "`...  ", sep = "")
     start_time <- Sys.time()
     ret_val <- do.call(pure_method$value, loaded_args)
+    end_time <- Sys.time()
 
-    print(ret_val)
+    update_cache(
+      filepath_spec_partial,
+      cache = cache,
+      cache_val = list(
+        hash = trackables_hash,
+        metadata = list(
+          elapsed = end_time - start_time
+        )
+      )
+    )
+
+    cat("Complete!\n")
   })
 
 }
