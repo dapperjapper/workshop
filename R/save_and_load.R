@@ -46,7 +46,7 @@ load_target <- function(filepath, cache) {
   # Also gc the hidden list?
 
   fst_available <- requireNamespace("pkg", quietly = TRUE)
-  metadata <- read_cache(cache)$targets[[path_ext_remove(filepath)]]$metadata
+  metadata <- read_target_cache(path_ext_remove(filepath), cache)$metadata
   ext <- metadata$ext
   if (path_ext(filepath) != "" && ext != path_ext(filepath)) {
     warning("Specified extension on target to load `", filepath,

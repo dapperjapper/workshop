@@ -83,7 +83,7 @@ target <- function(filepath_spec, method, cache = get_cache()) {
 
     # Get the hash of the last run
     # TODO: need to aggregate across non-partial specs
-    target_hash <- read_cache(cache)$targets[[path_ext_remove(filepath_spec_partial)]]$hash
+    target_hash <- read_target_cache(path_ext_remove(filepath_spec_partial), cache)$hash
 
     # Return if target is up to date
     if (length(target_hash) && target_hash == trackables_hash) {
@@ -101,10 +101,10 @@ target <- function(filepath_spec, method, cache = get_cache()) {
       end_time <- Sys.time()
       filepath <- encode_spec(list(...), filepath_spec_partial)
       metadata <- save_target_result(filepath, result)
-      update_cache(
-        path_ext_remove(filepath),
+      upsert_target_cache(
         cache = cache,
-        cache_val = list(
+        target = path_ext_remove(filepath),
+        val = list(
           hash = trackables_hash,
           elapsed = end_time - start_time,
           metadata = metadata
@@ -160,7 +160,7 @@ process_method_args <- function(method, cache) {
       # the hash looks like with those dimensions embedded
       hasher <- function(...) {
         target_path <- encode_spec(list(...), target_spec)
-        read_cache(cache)$targets[[path_ext_remove(target_path)]]$hash
+        read_target_cache(path_ext_remove(target_path), cache)$hash
       }
 
       # TODO TODO TODO

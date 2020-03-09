@@ -15,6 +15,7 @@ Imports:
     codetools,
     stringr,
     digest,
-    glue
+    glue,
+    yaml
 Suggests: fst
 RoxygenNote: 6.1.1
