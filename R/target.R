@@ -81,9 +81,16 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     # Get the hash of this run
     trackables_hash <- digest(pure_method$trackables)
 
-    # Get the hash of the last run
-    # TODO: need to aggregate across non-partial specs
-    target_hash <- read_target_cache(path_ext_remove(filepath_spec_partial), cache)$hash
+    # Get the hashes of the last run
+    # (there may be multiple bc of unspecified dimensions... so
+    # we must check that hash is equal across all these)
+    target_hash <- read_matching_targets_cache(path_ext_remove(filepath_spec_partial), cache) %>%
+      map("hash") %>%
+      unique()
+
+    if (length(target_hash) != 1) {
+      target_hash <- ""
+    }
 
     # Return if target is up to date
     if (length(target_hash) && target_hash == trackables_hash) {

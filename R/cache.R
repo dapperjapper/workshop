@@ -33,7 +33,9 @@ read_target_cache <- function(target, cache = default_cache()) {
 }
 
 read_matching_targets_cache <- function(spec_partial, cache = default_cache()) {
-  # TODO
+  targets <- read_yaml(cache$path)$targets
+  matches <- names(targets)[spec_match(names(targets), spec_partial)]
+  targets[matches]
 }
 
 upsert_target_cache <- function(target, val, cache = default_cache()) {

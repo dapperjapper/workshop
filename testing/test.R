@@ -1,6 +1,6 @@
 # If dimension is specified like `name`, then it's broken into smaller targets.
 # If dimension is unspecified like `date`, then it's more like dynamic branching behavior.
-target("data/batch_files/raw-:name-:date-:size", function(
+target("data/batch_files/raw_:name_:date_:size", function(
   size = dimension("big", "small"),
   name = dimension("ed", "edd", "eddy")#,
   #local_var = dep_local()
