@@ -3,13 +3,15 @@
 #' @importFrom tidyr expand_grid
 #' @importFrom purrr transpose walk
 #' @importFrom rlang env_bind
+#' @importFrom fs path_ext_remove
 #' @export
 target <- function(filepath_spec, method, cache = get_cache()) {
 
   dimensions <- spec_dimensions(filepath_spec)
+  ext <- path_ext(filepath_spec)
 
   # Process method's args according to special arg syntax
-  args <- process_method_args(method)
+  args <- process_method_args(method, cache)
 
   # Process method's dependencies that aren't explicitly specified as args,
   # and bake them into the function environment
@@ -49,6 +51,11 @@ target <- function(filepath_spec, method, cache = get_cache()) {
 
   unspecified_dimensions <- setdiff(dimensions, names(specified_dimensions))
 
+  # Dummy dimension if none present
+  if (length(specified_dimensions) == 0) {
+    specified_dimensions = list(id = T)
+  }
+
   # Loop over every combination of all the specified dimensions
   expand_grid(!!!specified_dimensions) %>% transpose() %>% walk(function(these_dims) {
 
@@ -67,15 +74,21 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     pure_method$trackables$formals <- map(args, "hash") %>%
       map(do.call, args = these_dims)
 
+    # Maybe this is necessary?? If only extension in filepath is changed, nothing will
+    # invalidate cache...
+    pure_method$trackables$ext <- ext
+
     # Get the hash of this run
     trackables_hash <- digest(pure_method$trackables)
 
     # Get the hash of the last run
-    target_hash <- read_cache(cache)$targets[[filepath_spec_partial]]$hash
+    # TODO: need to aggregate across non-partial specs
+    target_hash <- read_cache(cache)$targets[[path_ext_remove(filepath_spec_partial)]]$hash
 
     # Return if target is up to date
     if (length(target_hash) && target_hash == trackables_hash) {
-      cat("Target `", filepath_spec_partial, "` is up to date. ", sample(encouragement, 1), "\n", sep = "")
+      cat("Target `", path_ext_remove(filepath_spec_partial), "` is up to date. ",
+          sample(encouragement, 1), "\n", sep = "")
       return()
     }
 
@@ -85,8 +98,20 @@ target <- function(filepath_spec, method, cache = get_cache()) {
       map(do.call, args = these_dims)
 
     save_target <- function(result, ...) {
+      end_time <- Sys.time()
       filepath <- encode_spec(list(...), filepath_spec_partial)
-      save_target_result(filepath, result)
+      metadata <- save_target_result(filepath, result)
+      update_cache(
+        path_ext_remove(filepath),
+        cache = cache,
+        cache_val = list(
+          hash = trackables_hash,
+          elapsed = end_time - start_time,
+          metadata = metadata
+        )
+      )
+      # Double assignment sets start_time at the top level
+      start_time <<- Sys.time()
     }
 
     # Special values for use inside method
@@ -97,21 +122,9 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     )
 
     # Git 'r dun
-    cat("Running target `", filepath_spec_partial, "`...  ", sep = "")
+    cat("Running target `", path_ext_remove(filepath_spec_partial), "`...  ", sep = "")
     start_time <- Sys.time()
     ret_val <- do.call(pure_method$value, loaded_args)
-    end_time <- Sys.time()
-
-    update_cache(
-      filepath_spec_partial,
-      cache = cache,
-      cache_val = list(
-        hash = trackables_hash,
-        metadata = list(
-          elapsed = end_time - start_time
-        )
-      )
-    )
 
     cat("Complete!\n")
   })
@@ -120,7 +133,7 @@ target <- function(filepath_spec, method, cache = get_cache()) {
 
 #' @importFrom purrr imap map "%>%"
 #' @importFrom rlang is_call call_args set_names is_function call_name expr sym
-process_method_args <- function(method) {
+process_method_args <- function(method, cache) {
   args <- formals(method)
   method_env <- environment(method)
 
@@ -135,13 +148,32 @@ process_method_args <- function(method) {
     if (!is_call(arg_value)) {
       stop("Cannot process arg ", arg_name, " that doesn't use method arg syntax.")
     }
+
     call <- call_name(arg_value)
     if (call == "dep_target") {
+
+      # Eval anything put in the declaration in method_env
+      target_spec <- eval(call_args(arg_value)[[1]], envir = method_env)
+      # TODO: at what level are dimensions specified? Allow flexibility between runs
+      # We know the hash across unspecified dimensions at this scope, but we need to
+      # wait until hasher() is run across all the specified dimensions to see what
+      # the hash looks like with those dimensions embedded
+      hasher <- function(...) {
+        target_path <- encode_spec(list(...), target_spec)
+        read_cache(cache)$targets[[path_ext_remove(target_path)]]$hash
+      }
+
       # TODO TODO TODO
       # (1) complain if target method is not loaded in memory
       # (2) complain if in-memory cache method doesn't match fs cache method
       # (3) load_target like normal (?)
+      loader <- function(...) {
+        target_path <- encode_spec(list(...), target_spec)
+        load_target(target_path, cache)
+      }
+
     } else if (call == "dep_local") {
+
       # Two syntaxes for dep_local():
       if (length(call_args(arg_value)) == 0) {
         # If form var=dep_local(), get var from method_env
@@ -154,10 +186,15 @@ process_method_args <- function(method) {
       # not sure this would make any difference...
       loader <- function(...) { val }
       hasher <- function(...) { digest(val) }
+
     } else if (call == "dep_file") {
+
+      # STOP if the dep is found in the cache of targets
       # file_path("path/to/file.js") returns a function()
       # file_path("path/to/:variable.js", variable = vector) returns a function(variable)
+
     } else if (call == "dimension") {
+
       # This turns dimension(vector, c("reg", 23), 1:100) into c(vector, c("reg", 23), 1:100)
       # Then the c() call is evaluated in the context of method_env. This is a super flexible
       # syntax! Need to make sure we end up w a character vector, though.
@@ -171,12 +208,19 @@ process_method_args <- function(method) {
       hasher <- function(...) {
         digest(loader(...))
       }
+
     } else {
       stop("Unrecognized call to ", call, " for arg ", arg_name)
     }
 
     return(list(load = loader, hash = hasher, dimensions = dimensions))
   })
+}
+
+# Dummy function
+#' @export
+save_target <- function(...) {
+  stop("Please only use save_target() inside a target!")
 }
 
 encouragement <- c(

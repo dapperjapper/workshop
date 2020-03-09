@@ -1,3 +1,21 @@
+#' PURITY
+#'
+#' What is allowed inside of target methods:
+#' - Explicitly specified dependencies
+#'   - Objects                                Invalidated through inequality
+#'   - File paths                             Invalidated through file modified dates
+#'   - Other targets                          Invalidated recursively
+#'   - Dirty functions from devtools shim /   Must specify cache invalidation method
+#'     method source environment
+#' - Functions from packages                  Invalidated through package versioning
+#' - Pure functions from devtools shim /      Invalidated through recursive code analysis
+#'   method source environment
+#'
+#' What is not allowed inside of target methods:
+#' - Unspecified non-function objects from method source environment
+#' - Loading from unspecified file paths
+#' - Other targets
+#'
 #' @importFrom rlang new_environment env_name is_primitive env_parents empty_env
 #' @importFrom purrr map_chr discard
 #' @importFrom codetools findGlobals
@@ -27,7 +45,6 @@ purify_function <- function(func, ignore_arg_defaults = T) {
 
   globals <- globals %>%
     set_names() %>%
-    # TODO: drop primitives?
     map(function(var) {
       if (!exists(var, envir = func_env)) {
         warning("Function refers to ", var, " which doesn't exist in environment")

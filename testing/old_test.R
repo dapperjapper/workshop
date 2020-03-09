@@ -43,27 +43,27 @@ target("data/analysis", function(
   return(length(raw_data) + local_var)
 })
 
-batch_targets("data/batch_files/:name", function(...) {
-  for (x in long_list) {
-    y <- read(x) %>% process()
-    save_target(y, name = x)
+# If dimension is specified like `name`, then it's broken into smaller targets.
+# If dimension is unspecified like `date`, then it's more like dynamic branching behavior.
+target("data/batch_files/raw-:name-:date-:size", function(
+  size = dimension("big", "small"),
+  name = dimension("ed", "edd", "eddy")#,
+  #local_var = dep_local()
+) {
+  for (x in 1:3) {
+    # y <- read(x) %>% process()
+    # Since name is specified, we can't use it as an argument here
+    # Since date is unspecified, we must use it as an argument here
+    save_target(x, date = x)
   }
 })
 
-#' PURITY
-#'
-#' What is allowed inside of target methods:
-#' - Explicitly specified dependencies
-#'   - Objects                                Invalidated through inequality
-#'   - File paths                             Invalidated through file modified dates
-#'   - Other targets                          Invalidated recursively
-#'   - Dirty functions from devtools shim /   Must specify cache invalidation method
-#'     method source environment
-#' - Functions from packages                  Invalidated through package versioning
-#' - Pure functions from devtools shim /      Invalidated through recursive code analysis
-#'   method source environment
-#'
-#' What is not allowed inside of target methods:
-#' - Unspecified non-function objects from method source environment
-#' - Loading from unspecified file paths
-#' - Other targets
+batch_targets("data/batch_files/processed-:name-:date", function(
+  raw = dep_target("data/batch_files/raw-:name-:date")
+) {
+  x <- process(raw)
+  # Both dimensions are specified according to the dep_target spec
+  save_target(x)
+})
+
+
