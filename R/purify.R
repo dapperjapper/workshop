@@ -17,7 +17,7 @@
 #' - Other targets
 #'
 #' @importFrom rlang new_environment env_name is_primitive env_parents empty_env
-#' @importFrom purrr map_chr discard
+#' @importFrom purrr map_chr discard imap_lgl
 #' @importFrom codetools findGlobals
 #' @importFrom pryr where
 #' @importFrom stringr str_remove str_detect
@@ -29,7 +29,6 @@ purify_function <- function(func, ignore_arg_defaults = T) {
   # Function blacklist is necessary to prevent user from breaking purity.
 
   func_env <- environment(func)
-  new_env_base <- empty_env() # parent.env(globalenv())
 
   # CODE ANALYSIS (THIS IS THE HARD PART)
   globals <- findGlobals(func)
@@ -104,12 +103,19 @@ purify_function <- function(func, ignore_arg_defaults = T) {
       }
     })
 
-  # TODO: globals_to_embed = everything from globals that isn't in an environment that's
-  # a parent of new_env_base. Or, just move everything and have new_env_base be the empty
-  # env? Need to test speed...
+  new_env_base <- parent.env(globalenv())
+  # Don't need to embed things already included from packages or primitives
+  globals_already_included <- globals %>% imap_lgl(function(global, gname) {
+    is.character(global$trackables) ||
+      (exists(gname, envir = new_env_base, inherits = T) &&
+      identical(global$value, get(gname, envir = new_env_base, inherits = T)))
+  })
 
   # Load globals into function environment so it can access those and *only* those
-  environment(func) <- new_environment(data = map(globals, "value"), parent = new_env_base)
+  environment(func) <- new_environment(
+    data = globals[!globals_already_included] %>% map("value"),
+    parent = new_env_base
+  )
 
   # Purified function and trackables
   return(list(
