@@ -39,7 +39,7 @@ save_target_result <- function(filepath, result, ext = path_ext(filepath)) {
 }
 
 #' @importFrom readr read_rds read_csv
-load_target <- function(filepath, cache) {
+load_target <- function(filepath, cache = default_cache()) {
   # TODO: Check hidden list in global environment, see if it has already
   # been loaded and is up to date. If it is, just return the reference
   # to it.

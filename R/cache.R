@@ -15,7 +15,7 @@ default_cache <- function() {
 #' @importFrom yaml read_yaml write_yaml
 #' @export
 get_cache <- function(path = "workshop_cache.yaml") {
-  cat("Loading cache", path, "\n")
+  cat("Loading cache:", path, "\n")
   dir_create(path_dir(path))
   if (!file_exists(path)) {
     write_yaml(list(cache_version = "0.01", targets = list()), path)

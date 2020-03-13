@@ -2,10 +2,14 @@
 % Please edit documentation in R/spec.R
 \name{spec_match}
 \alias{spec_match}
-\title{Vectorized over path! :^)}
+\title{Vectorized over path! :^)
+path <- c("data/one_blue", "data/two_green.rds", "data/something/else")
+spec <- "data/:first_:second"}
 \usage{
 spec_match(path, spec)
 }
 \description{
 Vectorized over path! :^)
+path <- c("data/one_blue", "data/two_green.rds", "data/something/else")
+spec <- "data/:first_:second"
 }

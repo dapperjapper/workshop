@@ -19,12 +19,10 @@ target("data/flights.csv", function() {
 
 target("data/flights_by_origin/:origin", function(flights = dep_target("data/flights.csv")) {
   origins <- unique(flights$origin)
-  browser()
   origins %>% map(function(this_origin) {
     flights %>%
       filter(origin == this_origin) %>%
       save_target(origin = this_origin)
   })
 })
-
 

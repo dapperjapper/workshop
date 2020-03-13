@@ -105,6 +105,10 @@ target <- function(filepath_spec, method, cache = get_cache()) {
       map(do.call, args = these_dims)
 
     save_target <- function(result, ...) {
+      dim_str <- list(...) %>%
+        imap(function(x, i) { str_c(i, '="', x, '"') }) %>%
+        str_c(collapse = ", ")
+      cat("Saving", dim_str, "...\n")
       end_time <- Sys.time()
       filepath <- encode_spec(list(...), filepath_spec_partial)
       metadata <- save_target_result(filepath, result)
@@ -129,7 +133,7 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     )
 
     # Git 'r dun
-    cat("Running target `", path_ext_remove(filepath_spec_partial), "`...  ", sep = "")
+    cat("Running target `", path_ext_remove(filepath_spec_partial), "`\n", sep = "")
     start_time <- Sys.time()
     ret_val <- do.call(pure_method$value, loaded_args)
 
