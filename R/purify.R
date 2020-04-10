@@ -30,8 +30,12 @@ purify_function <- function(func, ignore_arg_defaults = T) {
 
   func_env <- environment(func)
 
+  # Throw out formals (func arguments) bc they are irrelevant
+  # to this analysis
+  temp_func <- func
+  formals(temp_func) <- pairlist()
   # CODE ANALYSIS (THIS IS THE HARD PART)
-  globals <- findGlobals(func)
+  globals <- findGlobals(temp_func)
 
   # If we don't do this, complains that `dep_target` (for example)
   # doesn't exist in the environment. This is because we are blurring
@@ -39,7 +43,7 @@ purify_function <- function(func, ignore_arg_defaults = T) {
   # to make a target) and a function more generally.
   if (ignore_arg_defaults) {
     # TODO: clunky; need to just ignore func formals to begin with
-    globals <- setdiff(globals, c("dep_target", "dep_local", "dep_file", "dimension", "save_target", ".dimensions"))
+    globals <- setdiff(globals, c("save_target", ".dimensions", "T"))
   }
 
   globals <- globals %>%
