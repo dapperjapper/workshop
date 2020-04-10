@@ -2,7 +2,7 @@ two_names <- c("edd", "eddy")
 
 # If dimension is specified like `name`, then it's broken into smaller targets.
 # If dimension is unspecified like `date`, then it's more like dynamic branching behavior.
-target("data/batch_files/raw_:name_:date_:size", function(
+target("testing/data/batch_files/raw_:name_:date_:size", function(
   size = dimension("big", "small"),
   name = dimension("ed", two_names)#,
   #local_var = dep_local()
@@ -15,11 +15,11 @@ target("data/batch_files/raw_:name_:date_:size", function(
   }
 })
 
-target("data/flights.csv", function() {
+target("testing/data/flights.csv", function() {
   save_target(nycflights13::flights)
 })
 
-target("data/flights_by_origin/:origin", function(flights = dep_target("data/flights.csv")) {
+target("testing/data/flights_by_origin/:origin", function(flights = dep_target("testing/data/flights.csv")) {
   origins <- unique(flights$origin)
   origins %>% map(function(this_origin) {
     flights %>%
