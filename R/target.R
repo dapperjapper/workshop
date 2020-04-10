@@ -113,6 +113,8 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     }
 
     # OK let's build this frickin target then
+    cat("Running target `", path_ext_remove(filepath_spec_partial), "`\n", sep = "")
+    start_time <- Sys.time()
 
     loaded_args <- map(args, "load") %>%
       map(do.call, args = these_dims)
@@ -150,8 +152,6 @@ target <- function(filepath_spec, method, cache = get_cache()) {
       )
 
     # Git 'r dun
-    cat("Running target `", path_ext_remove(filepath_spec_partial), "`\n", sep = "")
-    start_time <- Sys.time()
     ret_val <- do.call(pure_method$value, loaded_args)
 
     cat("Complete!\n")
