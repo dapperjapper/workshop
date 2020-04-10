@@ -134,7 +134,7 @@ target <- function(filepath_spec, method, cache = get_cache()) {
         target = path_ext_remove(filepath),
         val = list(
           hash = trackables_hash,
-          build_secs = as.numeric(end_time - start_time, units = "secs"),
+          build_min = as.numeric(end_time - start_time, units = "mins"),
           metadata = metadata
         )
       )
