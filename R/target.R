@@ -258,5 +258,8 @@ encouragement <- c(
   "Great news :)",
   "Good job.",
   "Nice work.",
-  "Chill B^)"
+  "Chill B^)",
+  "Stan SOPHIE and 100 gecs",
+  "You're doing a great job ;^)",
+  "Remember to drink water!"
 )
