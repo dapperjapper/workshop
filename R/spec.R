@@ -1,3 +1,5 @@
+# TODO: standard spec class format
+
 #' @importFrom stringr str_match_all str_sub
 spec_dimensions <- function(spec) {
   spec <- spec[[1]]

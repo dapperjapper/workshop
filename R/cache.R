@@ -32,6 +32,7 @@ read_target_cache <- function(target, cache = default_cache()) {
   read_yaml(cache$path)$targets[[target]]
 }
 
+# TODO: remove spec_partial extension before reading?
 read_matching_targets_cache <- function(spec_partial, cache = default_cache()) {
   targets <- read_yaml(cache$path)$targets
   matches <- names(targets)[spec_match(names(targets), spec_partial)]

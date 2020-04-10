@@ -44,12 +44,22 @@ target <- function(filepath_spec, method, cache = get_cache()) {
       dim_values_for_args <- map(arg_dimensions, dim) %>% discard(is.null)
 
       if (length(dim_values_for_args) > 1 && !dim_values_for_args %>% reduce(identical)) {
-        warning("For dimension `", dim, "`, the specified values are not equal between args...")
+        warning(
+          "For dimension `", dim, "`, the specified values are not equal between args...")
       }
       dim_values_for_args %>% reduce(intersect)
     })
 
-  unspecified_dimensions <- setdiff(dimensions, names(specified_dimensions))
+  dimensions_missing_in_spec <- setdiff(names(specified_dimensions), dimensions)
+  if (length(dimensions_missing_in_spec)) {
+    stop(
+      "Dimensions ",
+      str_c("`", dimensions_missing_in_spec, "`", collapse = ", "),
+      " need to be present in the target spec, or you must explicitly aggregate over them."
+    )
+  }
+  # The converse of the above
+  # dynamic_branching_dimensions <- setdiff(dimensions, names(specified_dimensions))
 
   # Dummy dimension if none present
   if (length(specified_dimensions) == 0) {
@@ -57,9 +67,10 @@ target <- function(filepath_spec, method, cache = get_cache()) {
   }
 
   # Loop over every combination of all the specified dimensions
+  # TODO: is this appropriate behavior?
   expand_grid(!!!specified_dimensions) %>% transpose() %>% walk(function(these_dims) {
 
-    # Fill in the dimensions we have, leave others still in :dimension format
+    # Fill in the dimensions we have in the path, leave others still in :dimension format
     filepath_spec_partial <- encode_spec(these_dims, filepath_spec, allow_missing = T)
 
     # Determine if method needs to be re-run. Need to check:
@@ -84,7 +95,8 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     # Get the hashes of the last run
     # (there may be multiple bc of unspecified dimensions... so
     # we must check that hash is equal across all these)
-    target_hash <- read_matching_targets_cache(path_ext_remove(filepath_spec_partial), cache) %>%
+    target_hash <- path_ext_remove(filepath_spec_partial) %>%
+      read_matching_targets_cache(cache) %>%
       map("hash") %>%
       unique()
 
@@ -94,6 +106,7 @@ target <- function(filepath_spec, method, cache = get_cache()) {
 
     # Return if target is up to date
     if (length(target_hash) && target_hash == trackables_hash) {
+      # TODO: Check that the result files still exist??
       cat("Target `", path_ext_remove(filepath_spec_partial), "` is up to date. ",
           sample(encouragement, 1), "\n", sep = "")
       return()
@@ -104,11 +117,15 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     loaded_args <- map(args, "load") %>%
       map(do.call, args = these_dims)
 
+    # TODO what to do when func doesn't have a save_target in it?
     save_target <- function(result, ...) {
+      # This just forms a string for printing
       dim_str <- list(...) %>%
         imap(function(x, i) { str_c(i, '="', x, '"') }) %>%
         str_c(collapse = ", ")
-      cat("Saving", dim_str, "...\n")
+      cat("Saving ", dim_str, "...\n", sep = "")
+
+      # TODO: error when unnecessary dimensions provided?
       end_time <- Sys.time()
       filepath <- encode_spec(list(...), filepath_spec_partial)
       metadata <- save_target_result(filepath, result)
@@ -117,7 +134,7 @@ target <- function(filepath_spec, method, cache = get_cache()) {
         target = path_ext_remove(filepath),
         val = list(
           hash = trackables_hash,
-          elapsed = end_time - start_time,
+          build_secs = as.numeric(end_time - start_time, units = "secs"),
           metadata = metadata
         )
       )
@@ -126,11 +143,11 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     }
 
     # Special values for use inside method
-    env_bind(
-      .env = environment(pure_method$value),
-      .dimensions = these_dims,
-      save_target = save_target
-    )
+    environment(pure_method$value) %>%
+      env_bind(
+        .dimensions = these_dims,
+        save_target = save_target
+      )
 
     # Git 'r dun
     cat("Running target `", path_ext_remove(filepath_spec_partial), "`\n", sep = "")
@@ -147,6 +164,8 @@ target <- function(filepath_spec, method, cache = get_cache()) {
 process_method_args <- function(method, cache) {
   args <- formals(method)
   method_env <- environment(method)
+
+  # TODO: bake `cache` at beginning of loop so that yaml only has to be read once...
 
   args %>% imap(function(arg_value, arg_name) {
 
@@ -211,8 +230,8 @@ process_method_args <- function(method, cache) {
       # syntax! Need to make sure we end up w a character vector, though.
       arg_value[[1]] <- expr(c)
       dimensions[[arg_name]] <- eval(arg_value, envir = method_env)
-      # The loader is just a function that returns the value of its dimension as specified in the
-      # calling "..."
+      # The loader is just a function that returns the value of its dimension
+      # as specified in the calling "..."
       loader <- eval(expr(function(...) {
         list(...)[[!!arg_name]]
       }))
