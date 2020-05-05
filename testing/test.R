@@ -8,6 +8,7 @@ target("testing/data/batch_files/raw_:name_:date_:size", function(
   #local_var = dep_local()
 ) {
   for (x in 1:3) {
+    timer_phase_end("test")
     # y <- read(x) %>% process()
     # Since name is specified, we can't use it as an argument here
     # Since date is unspecified, we must use it as an argument here
@@ -15,7 +16,7 @@ target("testing/data/batch_files/raw_:name_:date_:size", function(
   }
 })
 
-target("testing/data/flights.csv", function() {
+target(log_trackables = T, "testing/data/flights.csv", function() {
   save_target(nycflights13::flights)
 })
 

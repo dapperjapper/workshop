@@ -6,7 +6,7 @@
 #' @importFrom fs path_ext_remove
 #' @importFrom stringr str_trim
 #' @export
-target <- function(filepath_spec, method, cache = get_cache()) {
+target <- function(filepath_spec, method, cache = get_cache(), log_trackables = F) {
 
   dimensions <- spec_dimensions(filepath_spec)
   ext <- path_ext(filepath_spec)
@@ -89,6 +89,10 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     # Maybe this is necessary?? If only extension in filepath is changed, nothing will
     # invalidate cache...
     pure_method$trackables$ext <- ext
+
+    if (log_trackables) {
+      write_rds(pure_method$trackables, str_c(filepath_spec_partial, "_trackables.rds"))
+    }
 
     # Get the hash of this run
     trackables_hash <- digest(pure_method$trackables)
