@@ -42,15 +42,15 @@ purify_function <- function(func, ignore_arg_defaults = T) {
   # the distinction between `method` (a specialized function written
   # to make a target) and a function more generally.
   if (ignore_arg_defaults) {
-    # TODO: clunky; need to just ignore func formals to begin with
-    globals <- setdiff(globals, c("save_target", ".dimensions", "T"))
+    # TODO: clunky -- are there other things we can categorically ignore?
+    globals <- setdiff(globals, c("timer_phase_end", "save_target", ".dimensions", "T"))
   }
 
   globals <- globals %>%
     set_names() %>%
     map(function(var) {
       if (!exists(var, envir = func_env)) {
-        warning("Function refers to ", var, " which doesn't exist in environment")
+        # warning("Function refers to ", var, " which doesn't exist in environment")
         return(list(value = NULL, trackables = "(missing)"))
       }
       var_val <- get(var, envir = func_env)

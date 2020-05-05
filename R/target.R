@@ -4,6 +4,7 @@
 #' @importFrom purrr transpose walk
 #' @importFrom rlang env_bind
 #' @importFrom fs path_ext_remove
+#' @importFrom stringr str_trim
 #' @export
 target <- function(filepath_spec, method, cache = get_cache()) {
 
@@ -115,12 +116,35 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     # OK let's build this frickin target then
     cat("Running target `", path_ext_remove(filepath_spec_partial), "`\n", sep = "")
     start_time <- Sys.time()
+    times <- list()
 
     loaded_args <- map(args, "load") %>%
       map(do.call, args = these_dims)
 
+    timer_phase_end <- function(phase_name = "Unnamed phase") {
+      end_time <- Sys.time()
+
+      # Come up with a unique name for the phase
+      name_suffix <- ""
+      while (str_trim(str_c(phase_name, " ", name_suffix)) %in% names(times)) {
+        if (name_suffix == "") {
+          name_suffix <- 2
+        } else {
+          name_suffix <- name_suffix + 1
+        }
+      }
+      mins <- as.numeric(end_time - start_time, units = "mins")
+      times[[str_trim(str_c(phase_name, " ", name_suffix))]] <<- mins
+
+      # Double assignment sets start_time at the top level
+      start_time <<- Sys.time()
+      return(mins)
+    }
+
     # TODO what to do when func doesn't have a save_target in it?
     save_target <- function(result, ...) {
+      timer_phase_end("Processing")
+
       # This just forms a string for printing
       dim_str <- list(...) %>%
         imap(function(x, i) { str_c(i, '="', x, '"') }) %>%
@@ -131,16 +155,18 @@ target <- function(filepath_spec, method, cache = get_cache()) {
       end_time <- Sys.time()
       filepath <- encode_spec(list(...), filepath_spec_partial)
       metadata <- save_target_result(filepath, result)
+
+      timer_phase_end("Saving")
       upsert_target_cache(
         cache = cache,
         target = path_ext_remove(filepath),
         val = list(
           hash = trackables_hash,
-          build_min = as.numeric(end_time - start_time, units = "mins"),
+          build_min = times,
           metadata = metadata
         )
       )
-      # Double assignment sets start_time at the top level
+      times <<- list()
       start_time <<- Sys.time()
     }
 
@@ -148,7 +174,9 @@ target <- function(filepath_spec, method, cache = get_cache()) {
     environment(pure_method$value) %>%
       env_bind(
         .dimensions = these_dims,
-        save_target = save_target
+        .cache = cache,
+        save_target = save_target,
+        timer_phase_end = timer_phase_end
       )
 
     # Git 'r dun
