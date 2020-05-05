@@ -56,7 +56,8 @@ target <- function(filepath_spec, method, cache = default_cache(), log_trackable
     stop(
       "Dimensions ",
       str_c("`", dimensions_missing_in_spec, "`", collapse = ", "),
-      " need to be present in the target spec, or you must explicitly aggregate over them."
+      " need to be present in the target spec,",
+      " or you must explicitly aggregate over them using dep_rollup."
     )
   }
   # The converse of the above
@@ -215,14 +216,20 @@ process_method_args <- function(method, cache) {
     if (call == "dep_target") {
 
       # Eval anything put in the declaration in method_env
-      target_spec <- eval(call_args(arg_value)[[1]], envir = method_env)
-      # TODO: at what level are dimensions specified? Allow flexibility between runs
-      # We know the hash across unspecified dimensions at this scope, but we need to
-      # wait until hasher() is run across all the specified dimensions to see what
-      # the hash looks like with those dimensions embedded
+      target_spec <- eval(call_args(arg_value)[[1]], envir = method_env)[[1]]
+      cached_targets <- read_matching_targets_cache(target_spec, cache = cache)
+
+      # The dimensions that the dep_target operates over
+      # are extracted from the cached targets
+      dimensions <- cached_targets %>%
+        names() %>%
+        map(decode_spec, spec = target_spec) %>%
+        transpose() %>%
+        map(~ unique(combine(.)))
+
       hasher <- function(...) {
         target_path <- encode_spec(list(...), target_spec)
-        read_target_cache(path_ext_remove(target_path), cache)$hash
+        cached_targets[[path_ext_remove(target_path)]]$hash
       }
 
       # TODO TODO TODO
@@ -232,6 +239,104 @@ process_method_args <- function(method, cache) {
       loader <- function(...) {
         target_path <- encode_spec(list(...), target_spec)
         load_target(target_path, cache)
+      }
+
+    } else if (call == "dep_rollup") {
+
+      # Eval anything put in the declaration in method_env
+      target_spec <- call_args(arg_value) %>%
+        # Drop the named arguments
+        .[names(.)==""] %>%
+        # Only the first unnamed argument
+        .[[1]] %>%
+        eval(envir = method_env) %>%
+        # Only the first item of the evaluated bit
+        .[[1]]
+      cached_targets <- read_matching_targets_cache(target_spec, cache = cache)
+
+      across_dimensions <- call_args(arg_value) %>%
+        .[names(.)=="across"] %>%
+        .[[1]] %>%
+        eval(envir = method_env)
+
+      # TODO: format argument?
+      # They could specify `dep_rollup(format = "tibble")`
+      # for dimensions as columns & data list-col, or
+      # `dep_rollup(format = "list")` for
+      # `data$dimension1$dimension2` format.
+      # Maybe also have `format = "loader"`, for a lazy-loader
+      # type deal?
+
+      # The dimensions that the dep_rollup operates over
+      # are extracted from the cached targets
+      all_dimensions <- cached_targets %>%
+        names() %>%
+        map(decode_spec, spec = target_spec) %>%
+        transpose() %>%
+        map(~ unique(combine(.)))
+
+      # Drop dimensions that we are rolling up over,
+      # since we won't need to iterate over them as targets
+      dimensions <- all_dimensions %>%
+        .[!names(.) %in% across_dimensions]
+
+      hasher <- function(...) {
+        target_path <- encode_spec(list(...), target_spec, allow_missing = T)
+        # TODO clean this code
+        # There can be multiple responding targets for any combination of ... arguments
+        # So must pull all of their hashes and combine
+        matches <- cached_targets[spec_match(names(cached_targets), target_path)]
+        matches %>%
+          map_chr("hash") %>%
+          .[order(names(.))] %>%
+          digest()
+      }
+
+      load_list_recursive <- function(
+        target_partial,
+        across_dimensions,
+        these_dimensions = list()
+      ) {
+
+        # If we are at the bottom of the tree, actually load the target
+        if (length(across_dimensions) == 0) {
+          target_path <- encode_spec(these_dimensions, target_partial)
+          # TODO: what if this combination of dimensions doesn't actually exist?
+          return(load_target(target_path, cache))
+        }
+
+        # ELSE, take the first dimension off the stack
+        this_dim_name <- across_dimensions[[1]]
+        this_dim <- all_dimensions[[this_dim_name]]
+
+        # Some dimensions aren't referenced by the given target, so
+        # they won't be used by `encode_spec`. We can just drop them
+        # from the tree and move on.
+        if (this_dim %>% is.null()) {
+          return(load_list_recursive(
+            target_partial,
+            across_dimensions %>% tail(-1),
+            these_dimensions
+          ))
+        }
+
+        # Otherwise, branch the tree and recurse
+        this_dim %>%
+          set_names() %>%
+          map(~ load_list_recursive(
+            target_partial,
+            across_dimensions %>% tail(-1),
+            {these_dimensions[this_dim_name] <- .; these_dimensions}
+          ))
+      }
+
+      # TODO TODO TODO
+      # (1) complain if target method is not loaded in memory
+      # (2) complain if in-memory cache method doesn't match fs cache method
+      # (3) load_target like normal (?)
+      loader <- function(...) {
+        target_partial <- encode_spec(list(...), target_spec, allow_missing = T)
+        load_list_recursive(target_partial, across_dimensions)
       }
 
     } else if (call == "dep_local") {

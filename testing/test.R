@@ -29,3 +29,11 @@ target("testing/data/flights_by_origin/:origin", function(flights = dep_target("
   })
 })
 
+target("testing/data/:name_sum", function(
+  flights = dep_rollup("testing/data/flights_by_origin/:origin", across = "origin"),
+  file = dep_rollup("testing/data/batch_files/raw_:name_:date_big", across = "date")
+) {
+  str(file)
+  str(flights, max.level = 1)
+})
+
