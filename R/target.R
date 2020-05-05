@@ -6,7 +6,7 @@
 #' @importFrom fs path_ext_remove
 #' @importFrom stringr str_trim
 #' @export
-target <- function(filepath_spec, method, cache = get_cache(), log_trackables = F) {
+target <- function(filepath_spec, method, cache = default_cache(), log_trackables = F) {
 
   dimensions <- spec_dimensions(filepath_spec)
   ext <- path_ext(filepath_spec)

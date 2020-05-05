@@ -1,6 +1,6 @@
 workshop_sesh <- new.env(parent = emptyenv())
 # Will default to using the default cache when first referenced
-env_bind_lazy(workshop_sesh, cache = get_cache())
+env_bind_lazy(workshop_sesh, cache = get_cache("workshop_cache.yaml"))
 
 set_default_cache <- function(cache) {
   workshop_sesh$cache <- cache
@@ -14,7 +14,7 @@ default_cache <- function() {
 #' @importFrom fs file_create file_exists
 #' @importFrom yaml read_yaml write_yaml
 #' @export
-get_cache <- function(path = "workshop_cache.yaml") {
+get_cache <- function(path) {
   cat("Loading cache:", path, "\n")
   dir_create(path_dir(path))
   if (!file_exists(path)) {
@@ -25,7 +25,7 @@ get_cache <- function(path = "workshop_cache.yaml") {
 
 #' @export
 print.workshop_cache <- function(cache) {
-  cat("<cache with path:", cache$path, ">\n")
+  cat("<workshop cache with path:", cache$path, ">\n")
 }
 
 read_target_cache <- function(target, cache = default_cache()) {
@@ -35,8 +35,7 @@ read_target_cache <- function(target, cache = default_cache()) {
 # TODO: remove spec_partial extension before reading?
 read_matching_targets_cache <- function(spec_partial, cache = default_cache()) {
   targets <- read_yaml(cache$path)$targets
-  matches <- names(targets)[spec_match(names(targets), spec_partial)]
-  targets[matches]
+  targets[spec_match(names(targets), spec_partial)]
 }
 
 upsert_target_cache <- function(target, val, cache = default_cache()) {
