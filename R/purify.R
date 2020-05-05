@@ -100,10 +100,14 @@ purify_function <- function(func, ignore_arg_defaults = T) {
         }
 
         # TODO: track things better than just version?
-        return(list(value = var_val, trackables = list(
-          package = package_name,
-          version = packageVersion(package_name)
-        )))
+        if (package_name == "base") {
+          return(list(value = var_val, trackables = "(base package)"))
+        } else {
+          return(list(value = var_val, trackables = list(
+            package = package_name,
+            version = packageVersion(package_name)
+          )))
+        }
       }
     })
 
