@@ -60,6 +60,7 @@ process_method_args <- function(method, cache) {
         .[[1]]
       cached_targets <- read_matching_targets_cache(target_spec, cache = cache)
 
+      # TODO: informative error when "across" is forgotten
       across_dimensions <- call_args(arg_value) %>%
         .[names(.)=="across"] %>%
         .[[1]] %>%
