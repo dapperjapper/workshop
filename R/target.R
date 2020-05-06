@@ -146,6 +146,8 @@ target <- function(filepath_spec, method, cache = default_cache(), log_trackable
       return(mins)
     }
 
+    timer_phase_end("Loading dependencies")
+
     # TODO what to do when func doesn't have a save_target in it?
     save_target <- function(result, ...) {
       timer_phase_end("Processing")

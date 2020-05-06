@@ -44,6 +44,7 @@ process_method_args <- function(method, cache) {
       # (3) load_target like normal (?)
       loader <- function(...) {
         target_path <- encode_spec(list(...), target_spec)
+        cat("Loading `", target_path, "` ...\n", sep = "")
         load_target(target_path, cache)
       }
 
@@ -108,6 +109,7 @@ process_method_args <- function(method, cache) {
         # If we are at the bottom of the tree, actually load the target
         if (length(across_dimensions) == 0) {
           target_path <- encode_spec(these_dimensions, target_partial)
+          cat("Loading `", target_path, "` ...\n", sep = "")
           # TODO: what if this combination of dimensions doesn't actually exist?
           return(load_target(target_path, cache))
         }
