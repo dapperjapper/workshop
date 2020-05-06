@@ -43,7 +43,7 @@ purify_function <- function(func, ignore_arg_defaults = T) {
   # to make a target) and a function more generally.
   if (ignore_arg_defaults) {
     # TODO: clunky -- are there other things we can categorically ignore?
-    globals <- setdiff(globals, c("timer_phase_end", "save_target", ".dimensions", "T"))
+    globals <- setdiff(globals, c("timer_phase_end", "save_target", ".dimensions", "T", "F"))
   }
 
   globals <- globals %>%
