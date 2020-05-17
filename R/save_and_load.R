@@ -1,7 +1,7 @@
 # TODO: better way to specify arguments to save functions
 # Maybe a ... argument that gets passed? Or a possibility for custom saving functions?
 #' @importFrom readr write_rds write_csv
-#' @importFrom fs path_ext_set path_dir dir_create path_ext
+#' @importFrom fs path_ext_set path_dir dir_create path_ext path_file
 save_target_result <- function(filepath, result, ext = path_ext(filepath)) {
 
   fst_available <- requireNamespace("pkg", quietly = TRUE)

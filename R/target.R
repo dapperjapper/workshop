@@ -92,7 +92,10 @@ target <- function(filepath_spec, method, cache = default_cache(), log_trackable
     pure_method$trackables$ext <- ext
 
     if (log_trackables) {
-      write_rds(pure_method$trackables, str_c(filepath_spec_partial, "_trackables.rds"))
+      trackables_dir <- str_c(path_dir(filepath_spec_partial), "/trackables")
+      dir_create(trackables_dir)
+      write_rds(pure_method$trackables,
+                str_c(trackables_dir, "/", path_file(filepath_spec_partial), "_trackables.rds"))
     }
 
     # Get the hash of this run
@@ -146,6 +149,7 @@ target <- function(filepath_spec, method, cache = default_cache(), log_trackable
       return(mins)
     }
 
+    # TODO: only do this if there *were* dependencies to load
     timer_phase_end("Loading dependencies")
 
     # TODO what to do when func doesn't have a save_target in it?

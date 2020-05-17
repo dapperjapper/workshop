@@ -60,6 +60,7 @@ purify_function <- function(func, ignore_arg_defaults = T) {
 
       if (!is_function(var_val)) {
         # If name is not a function, bad
+        # TODO: check if this name is also shared with a function formal
         stop("Function refers to external non-function variable `", var, "` which is not imported")
       } else if (exists(var, envir = func_env, inherits = F)) {
         # If name is defined in func_env and is a function, recursively enforce purity
