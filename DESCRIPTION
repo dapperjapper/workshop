@@ -16,6 +16,12 @@ Imports:
     stringr,
     digest,
     glue,
-    yaml
+    yaml,
+    dplyr,
+    pryr,
+    purrr,
+    readr,
+    tibble,
+    tidyr
 Suggests: fst
 RoxygenNote: 7.1.0

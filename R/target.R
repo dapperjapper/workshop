@@ -196,6 +196,10 @@ target <- function(filepath_spec, method, cache = default_cache(), log_trackable
     cat("Complete!\n")
   })
 
+  # TODO: remove targets from yaml that fit spec but were not touched?
+  # and remove their files?
+
+  invisible()
 }
 
 # Dummy function
