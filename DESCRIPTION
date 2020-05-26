@@ -22,6 +22,8 @@ Imports:
     purrr,
     readr,
     tibble,
-    tidyr
+    tidyr,
+    crayon,
+    future
 Suggests: fst
 RoxygenNote: 7.1.0

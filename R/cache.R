@@ -24,8 +24,8 @@ get_cache <- function(path) {
 }
 
 #' @export
-print.workshop_cache <- function(cache) {
-  cat("<workshop cache with path:", cache$path, ">\n")
+print.workshop_cache <- function(x, ...) {
+  cat("<workshop cache with path:", cache$path, ">\n", ...)
 }
 
 read_target_cache <- function(target, cache = default_cache()) {

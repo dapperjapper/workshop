@@ -113,11 +113,13 @@ purify_function <- function(func, ignore_arg_defaults = T) {
     })
 
   new_env_base <- parent.env(globalenv())
-  # Don't need to embed things already included from packages or primitives
+  # Don't need to embed primitives
   globals_already_included <- globals %>% imap_lgl(function(global, gname) {
-    is.character(global$trackables) ||
-      (exists(gname, envir = new_env_base, inherits = T) &&
-      identical(global$value, get(gname, envir = new_env_base, inherits = T)))
+    is.character(global$trackables) #||
+      # I thought we didn't need to include things already included from packages
+      # but that turns out to be wrong when you run stuff parallel on a cluster
+      # (exists(gname, envir = new_env_base, inherits = T) &&
+      # identical(global$value, get(gname, envir = new_env_base, inherits = T)))
   })
 
   # Load globals into function environment so it can access those and *only* those
