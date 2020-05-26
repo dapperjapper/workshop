@@ -198,7 +198,7 @@ run_target <- function(these_dims, printer,
   }
 
   # OK let's build this frickin target then
-  printer("Running target!") #`", path_ext_remove(filepath_spec_partial), "`
+  printer("Running target...") #`", path_ext_remove(filepath_spec_partial), "`
   start_time <- Sys.time()
   times <- list()
 
