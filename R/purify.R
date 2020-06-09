@@ -43,6 +43,7 @@ purify_function <- function(func, ignore_arg_defaults = T) {
   # to make a target) and a function more generally.
   if (ignore_arg_defaults) {
     # TODO: clunky -- are there other things we can categorically ignore?
+    # TODO: error if no save target in source script
     globals <- setdiff(globals, c("timer_phase_end", "save_target", ".dimensions", "T", "F"))
   }
 
@@ -61,7 +62,8 @@ purify_function <- function(func, ignore_arg_defaults = T) {
       if (!is_function(var_val)) {
         # If name is not a function, bad
         # TODO: check if this name is also shared with a function formal
-        stop("Function refers to external non-function variable `", var, "` which is not imported")
+        warning("Function refers to external non-function variable `", var, "` which is not imported")
+        return(list(value = NULL, trackables = "(missing)"))
       } else if (exists(var, envir = func_env, inherits = F)) {
         # If name is defined in func_env and is a function, recursively enforce purity
         return(purify_function(var_val, ignore_arg_defaults = F))

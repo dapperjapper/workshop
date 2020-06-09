@@ -46,6 +46,7 @@ process_method_args <- function(method, cache) {
       # (3) load_target like normal (?)
       loader <- function(...) {
         target_path <- encode_spec(list(...), target_spec)
+        # TODO: use printer
         cat("Loading `", target_path, "` ...\n", sep = "")
         load_target(target_path, cache)
       }
