@@ -78,7 +78,7 @@ target <- function(filepath_spec, method,
   # TODO: is this appropriate behavior?
   futures <- expand_grid(!!!specified_dimensions) %>%
     transpose() %>%
-    reduce2(., 1:length(.), .init = list(), function(past_futures, these_dims, i) {
+    reduce2(., 1:length(.), .init = list(), function(past_targets, these_dims, i) {
       # Loop over the colors and create printer
       color <- job_colors[[(i-1)%%length(job_colors)+1]]
       dim_str <- list_to_str(these_dims)
@@ -109,39 +109,23 @@ target <- function(filepath_spec, method,
       # Basically we throw our new asyncronous future on the pile,
       # and then we go back and check to see if anything on the
       # pile has resolved.
-      past_futures <- c(past_futures, this_future)
-      map(past_futures, function(pending_future) {
-        # If it's resolved, get the value.
-        # This prints anything that was logged. It's useful to do this
-        # as soon as we see it was resolved so logging is as
-        # contemporaneous as possible
-        if (resolved(pending_future)) {
-          value(pending_future)
-        }
-      })
+      past_targets <- c(past_targets, list(list(printed = FALSE, future = this_future)))
+      past_targets <- print_resolved_futures(past_targets)
 
-      return(past_futures)
+      return(past_targets)
     })
-    # clustermq::Q(
-    #   run_target,
-    #   these_dims = .,
-    #   # This will repeat over the list to cover all jobs
-    #   color = rep_along(., job_colors),
-    #   n_jobs = n_jobs,
-    #   const = list(
-    #     filepath_spec = filepath_spec,
-    #     pure_method = pure_method,
-    #     args = args,
-    #     log_trackables = log_trackables,
-    #     cache = cache
-    #   )
-    # )
 
   # TODO: remove targets from yaml that fit spec but were not touched?
   # and remove their files?
 
+  if (!all(map_lgl(futures, "printed"))) {
+    cat("All jobs initiated. Waiting for target to complete...\n")
+  }
   # Block until everything is complete
-  futures %>% map(value)
+  while (!all(map_lgl(futures, "printed"))) {
+    Sys.sleep(1)
+    futures <- print_resolved_futures(futures)
+  }
   invisible(futures)
 }
 
@@ -202,9 +186,6 @@ run_target <- function(these_dims, printer,
   start_time <- Sys.time()
   times <- list()
 
-  loaded_args <- map(args, "load") %>%
-    map(do.call, args = these_dims)
-
   timer_phase_end <- function(phase_name = "Unnamed phase") {
     end_time <- Sys.time()
 
@@ -224,9 +205,6 @@ run_target <- function(these_dims, printer,
     start_time <<- Sys.time()
     return(mins)
   }
-
-  # TODO: only do this if there *were* dependencies to load
-  timer_phase_end("Loading dependencies")
 
   # TODO what to do when func doesn't have a save_target in it?
   save_target <- function(result, ...) {
@@ -262,19 +240,39 @@ run_target <- function(these_dims, printer,
       timer_phase_end = timer_phase_end
     )
 
-  packages_to_load <- pure_method$trackables$globals %>%
-    map_chr("package") %>%
-    unique()
+  # packages_to_load <- pure_method$trackables$globals %>%
+  #   map_chr("package") %>%
+  #   unique()
 
   # Git 'r dun
   this_future <- future(
     {
+
+      loaded_args <- map(args, "load") %>%
+        map(do.call, args = these_dims)
+      # TODO: only do this if there *were* dependencies to load
+      timer_phase_end("Loading dependencies")
+
       do.call(pure_method$value, loaded_args)
       printer("Complete!")
     }
   )
 
   return(this_future)
+}
+
+print_resolved_futures <- function(futures_list) {
+  map(futures_list, function(pending_target) {
+    # If it's resolved, get the value.
+    # This prints anything that was logged. It's useful to do this
+    # as soon as we see it was resolved so logging is as
+    # contemporaneous as possible
+    if (!pending_target$printed && resolved(pending_target$future)) {
+      resolve(pending_target, stdout = T, signal = T)
+      pending_target$printed <- TRUE
+    }
+    return(pending_target)
+  })
 }
 
 # Dummy function
