@@ -5,7 +5,7 @@
 #' @importFrom rlang env_bind rep_along
 #' @importFrom fs path_ext_remove
 #' @importFrom stringr str_trim
-#' @importFrom future future value resolved
+#' @importFrom future future value
 #' @export
 target <- function(filepath_spec, method,
                    cache = default_cache(),
@@ -126,6 +126,8 @@ target <- function(filepath_spec, method,
     Sys.sleep(1)
     futures <- print_resolved_futures(futures)
   }
+  # TODO: last time this target took XX (time per target), this time it took XX
+
   invisible(futures)
 }
 
@@ -254,6 +256,9 @@ run_target <- function(these_dims, printer,
       timer_phase_end("Loading dependencies")
 
       do.call(pure_method$value, loaded_args)
+      # Probably a good time to garbage collect
+      rm(loaded_args)
+      gc()
       printer("Complete!")
     }
   )
@@ -261,6 +266,7 @@ run_target <- function(these_dims, printer,
   return(this_future)
 }
 
+#' @importFrom future resolve resolved
 print_resolved_futures <- function(futures_list) {
   map(futures_list, function(pending_target) {
     # If it's resolved, get the value.
