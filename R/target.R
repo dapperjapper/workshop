@@ -259,7 +259,7 @@ run_target <- function(these_dims, printer,
     {
 
       loaded_args <- map(args, "load") %>%
-        map(do.call, args = these_dims)
+        map(do.call, args = these_dims, printer = printer)
       # TODO: only do this if there *were* dependencies to load
       timer_phase_end("Loading dependencies")
 

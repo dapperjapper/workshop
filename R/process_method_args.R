@@ -45,10 +45,9 @@ process_method_args <- function(method, cache) {
       # (1) complain if target method is not loaded in memory
       # (2) complain if in-memory cache method doesn't match fs cache method
       # (3) load_target like normal (?)
-      loader <- function(...) {
+      loader <- function(..., printer) {
         target_path <- encode_spec(list(...), target_spec)
-        # TODO: use printer
-        cat("Loading `", target_path, "` ...\n", sep = "")
+        printer("Loading `", target_path, "`...")
         load_target(target_path, cache)
       }
 
@@ -107,13 +106,14 @@ process_method_args <- function(method, cache) {
       load_list_recursive <- function(
         target_partial,
         across_dimensions,
-        these_dimensions = list()
+        these_dimensions = list(),
+        printer
       ) {
 
         # If we are at the bottom of the tree, actually load the target
         if (length(across_dimensions) == 0) {
           target_path <- encode_spec(these_dimensions, target_partial)
-          cat("Loading `", target_path, "` ...\n", sep = "")
+          printer("Loading `", target_path, "`...")
           # TODO: what if this combination of dimensions doesn't actually exist?
           return(load_target(target_path, cache))
         }
@@ -147,9 +147,9 @@ process_method_args <- function(method, cache) {
       # (1) complain if target method is not loaded in memory
       # (2) complain if in-memory cache method doesn't match fs cache method
       # (3) load_target like normal (?)
-      loader <- function(...) {
+      loader <- function(..., printer) {
         target_partial <- encode_spec(list(...), target_spec, allow_missing = T)
-        load_list_recursive(target_partial, across_dimensions)
+        load_list_recursive(target_partial, across_dimensions, printer = printer)
       }
 
     } else if (call == "dep_local") {
