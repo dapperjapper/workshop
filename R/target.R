@@ -14,6 +14,8 @@ target <- function(filepath_spec, method,
   dimensions <- spec_dimensions(filepath_spec)
   ext <- path_ext(filepath_spec)
 
+  alloc_cache(cache)
+  print("before")
   # Process method's args according to special arg syntax
   args <- process_method_args(method, cache)
 
@@ -130,6 +132,7 @@ target <- function(filepath_spec, method,
   }
   # TODO: last time this target took XX (time per target), this time it took XX
 
+  dealloc_cache(cache)
   invisible(futures)
 }
 
@@ -169,7 +172,7 @@ run_target <- function(these_dims, printer,
   # (there may be multiple bc of unspecified dimensions... so
   # we must check that hash is equal across all these)
   target_hash <- path_ext_remove(filepath_spec_partial) %>%
-    read_matching_targets_cache(cache) %>%
+    get_targets_cache(cache) %>%
     map("hash") %>%
     unique()
 

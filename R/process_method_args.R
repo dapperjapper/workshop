@@ -4,8 +4,6 @@ process_method_args <- function(method, cache) {
   args <- formals(method)
   method_env <- environment(method)
 
-  # TODO: bake `cache` at beginning of loop so that yaml only has to be read once...
-
   args %>% imap(function(arg_value, arg_name) {
 
     # Each arg comes with a loader to load the value for a given dimension,
@@ -23,7 +21,7 @@ process_method_args <- function(method, cache) {
 
       # Eval anything put in the declaration in method_env
       target_spec <- eval(call_args(arg_value)[[1]], envir = method_env)[[1]]
-      cached_targets <- read_matching_targets_cache(target_spec, cache = cache)
+      cached_targets <- get_targets_cache(target_spec, cache = cache)
 
       # TODO: what if there aren't any cached targets that match the spec?
       # TODO: make sure this target doesn't itself match the spec
@@ -63,7 +61,7 @@ process_method_args <- function(method, cache) {
         eval(envir = method_env) %>%
         # Only the first item of the evaluated bit
         .[[1]]
-      cached_targets <- read_matching_targets_cache(target_spec, cache = cache)
+      cached_targets <- get_targets_cache(target_spec, cache = cache)
 
       # TODO: informative error when "across" is forgotten
       across_dimensions <- call_args(arg_value) %>%
@@ -97,13 +95,16 @@ process_method_args <- function(method, cache) {
         # TODO clean this code
         # There can be multiple responding targets for any combination of ... arguments
         # So must pull all of their hashes and combine
-        matches <- cached_targets[spec_match(names(cached_targets), target_path)]
+        matches <- cached_targets[
+          spec_match(names(cached_targets), path_ext_remove(target_path))]
         matches %>%
           map_chr("hash") %>%
           .[order(names(.))] %>%
           digest()
       }
 
+      # TODO: wait why did I do this recursively when I could just do it
+      # with a expand_grid and map (my brain is literally broken)
       load_list_recursive <- function(
         target_partial,
         across_dimensions,
