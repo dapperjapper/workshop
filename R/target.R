@@ -74,6 +74,8 @@ target <- function(filepath_spec, method,
     specified_dimensions = list(id = T)
   }
 
+  cat("Running target:", filepath_spec, "\n")
+
   # Loop over every combination of all the specified dimensions
   # TODO: is this appropriate behavior?
   futures <- expand_grid(!!!specified_dimensions) %>%
@@ -156,6 +158,9 @@ run_target <- function(these_dims, printer,
     write_rds(pure_method$trackables,
               str_c(trackables_dir, "/", path_file(filepath_spec_partial), "_trackables.rds"))
   }
+
+  # TODO: is order of items in trackables object relevant? sort?
+  # this might happen if user specifies target formals in different order
 
   # Get the hash of this run
   trackables_hash <- digest(pure_method$trackables)
@@ -242,6 +247,9 @@ run_target <- function(these_dims, printer,
       timer_phase_end = timer_phase_end
     )
 
+  # TODO: automatic inclusion of S3 functions in packages?
+  # like the following:
+  # months <- lubridate:::months.numeric
   # packages_to_load <- pure_method$trackables$globals %>%
   #   map_chr("package") %>%
   #   unique()

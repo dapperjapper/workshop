@@ -26,6 +26,7 @@ process_method_args <- function(method, cache) {
       cached_targets <- read_matching_targets_cache(target_spec, cache = cache)
 
       # TODO: what if there aren't any cached targets that match the spec?
+      # TODO: make sure this target doesn't itself match the spec
 
       # The dimensions that the dep_target operates over
       # are extracted from the cached targets
