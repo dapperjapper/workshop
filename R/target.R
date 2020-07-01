@@ -254,6 +254,9 @@ run_target <- function(these_dims, printer,
   #   map_chr("package") %>%
   #   unique()
 
+  # TODO: futures return the cache update item, target() collects
+  # and writes yaml -- save_target does not write yaml
+
   # Git 'r dun
   this_future <- future(
     {
