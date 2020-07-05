@@ -175,6 +175,7 @@ process_method_args <- function(method, cache) {
 
     } else if (call == "dimension") {
 
+      # TODO: rename "dimension" to variations?
       # This turns dimension(vector, c("reg", 23), 1:100) into c(vector, c("reg", 23), 1:100)
       # Then the c() call is evaluated in the context of method_env. This is a super flexible
       # syntax! Need to make sure we end up w a character vector, though.
