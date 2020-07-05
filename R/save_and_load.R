@@ -39,6 +39,7 @@ save_target_result <- function(filepath, result, ext = path_ext(filepath)) {
 }
 
 #' @importFrom readr read_rds read_csv
+#' @importFrom rlang "%||%"
 load_target <- function(filepath, cache = default_cache()) {
   # TODO: Check hidden list in global environment, see if it has already
   # been loaded and is up to date. If it is, just return the reference
@@ -47,7 +48,7 @@ load_target <- function(filepath, cache = default_cache()) {
 
   fst_available <- requireNamespace("pkg", quietly = TRUE)
   metadata <- read_target_cache(path_ext_remove(filepath), cache)$metadata
-  ext <- metadata$ext
+  ext <- metadata$ext %||% "rds"
   if (path_ext(filepath) != "" && ext != path_ext(filepath)) {
     warning("Specified extension on target to load `", filepath,
             "` does not equal extension on cached version (", ext, ")")
