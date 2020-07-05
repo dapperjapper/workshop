@@ -234,6 +234,7 @@ run_target <- function(these_dims, printer,
     )
     times <<- list()
     start_time <<- Sys.time()
+    invisible()
   }
 
   # Special values for use inside method
@@ -258,21 +259,20 @@ run_target <- function(these_dims, printer,
   # and writes yaml -- save_target does not write yaml
 
   # Git 'r dun
-  this_future <- future(
-    {
+  this_future <- future({
 
-      loaded_args <- map(args, "load") %>%
-        map(do.call, args = these_dims)
-      # TODO: only do this if there *were* dependencies to load
-      timer_phase_end("Loading dependencies")
+    loaded_args <- map(args, "load") %>%
+      map(do.call, args = these_dims)
+    # TODO: only do this if there *were* dependencies to load
+    timer_phase_end("Loading dependencies")
 
-      do.call(pure_method$value, loaded_args)
-      # Probably a good time to garbage collect
-      rm(loaded_args)
-      gc()
-      printer("Complete!")
-    }
-  )
+    do.call(pure_method$value, loaded_args)
+    # Probably a good time to garbage collect
+    rm(loaded_args)
+    gc()
+    printer("Complete!")
+
+  })
 
   return(this_future)
 }
