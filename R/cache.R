@@ -5,7 +5,6 @@ env_bind_lazy(workshop_sesh, cache = get_cache("workshop_cache.yaml"))
 set_default_cache <- function(cache) {
   workshop_sesh$cache <- cache
 }
-
 default_cache <- function() {
   workshop_sesh$cache
 }
@@ -15,12 +14,12 @@ default_cache <- function() {
 #' @importFrom yaml read_yaml write_yaml
 #' @export
 get_cache <- function(path) {
-  cat("Loading cache:", path, "\n")
+  cat("Getting cache:", path, "\n")
   dir_create(path_dir(path))
   if (!file_exists(path)) {
     write_yaml(list(cache_version = "0.01", targets = list()), path)
   }
-  return(structure(list(path = path), class="workshop_cache"))
+  return(structure(list(path = path, loaded = F), class="workshop_cache"))
 }
 
 #' @export
@@ -29,18 +28,40 @@ as.character.workshop_cache <- function(x, ...) {
 }
 
 # TODO: error if cache permissions issue?
+load_cache <- function(cache) {
+  cat("Loading cache:", cache$path, "\n")
+  cache$data <- read_yaml(cache$path)
+  cache$loaded <- T
+  return(cache)
+}
+
+write_cache <- function(cache) {
+  if (!cache$loaded) {
+    stop("Cache must be loaded before writing: ", cache)
+  }
+  write_yaml(cache$data, cache$path)
+}
+
 read_target_cache <- function(target, cache = default_cache()) {
-  read_yaml(cache$path)$targets[[target]]
+  if (!cache$loaded) {
+    stop("Cache must be loaded before reading: ", cache)
+  }
+  cache$data$targets[[target]]
 }
 
 # TODO: remove spec_partial extension before reading?
 read_matching_targets_cache <- function(spec_partial, cache = default_cache()) {
-  targets <- read_yaml(cache$path)$targets
+  if (!cache$loaded) {
+    stop("Cache must be loaded before reading: ", cache)
+  }
+  targets <- cache$data$targets
   targets[spec_match(names(targets), spec_partial)]
 }
 
-upsert_target_cache <- function(target, val, cache = default_cache()) {
-  data <- read_yaml(cache$path)
-  data$targets[[target]] <- val
-  write_yaml(data, cache$path)
+modify_cache <- function(target, val, cache = default_cache()) {
+  if (!cache$loaded) {
+    stop("Cache must be loaded before modifying: ", cache)
+  }
+  cache$data$targets[[target]] <- val
+  return(cache)
 }

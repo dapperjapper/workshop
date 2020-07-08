@@ -4,8 +4,6 @@ process_method_args <- function(method, cache) {
   args <- formals(method)
   method_env <- environment(method)
 
-  # TODO: bake `cache` at beginning of loop so that yaml only has to be read once...
-
   args %>% imap(function(arg_value, arg_name) {
 
     # Each arg comes with a loader to load the value for a given dimension,
@@ -38,7 +36,7 @@ process_method_args <- function(method, cache) {
 
       hasher <- function(...) {
         target_path <- encode_spec(list(...), target_spec)
-        cached_targets[[path_ext_remove(target_path)]]$hash
+        cached_targets[[target_path]]$hash
       }
 
       # TODO TODO TODO

@@ -12,7 +12,11 @@ target <- function(filepath_spec, method,
                    log_trackables = F, force_rebuild = F) {
 
   dimensions <- spec_dimensions(filepath_spec)
+  # TODO: make sure ext is actually used when saving
   ext <- path_ext(filepath_spec)
+  filepath_spec <- path_ext_remove(filepath_spec)
+  # Load cache data into memory
+  cache <- load_cache(cache)
 
   # Process method's args according to special arg syntax
   args <- process_method_args(method, cache)
@@ -112,7 +116,7 @@ target <- function(filepath_spec, method,
       # and then we go back and check to see if anything on the
       # pile has resolved.
       past_targets <- c(past_targets, list(list(printed = FALSE, future = this_future)))
-      past_targets <- print_resolved_futures(past_targets)
+      past_targets <- process_resolved_futures(past_targets, cache)
 
       return(past_targets)
     })
@@ -126,7 +130,8 @@ target <- function(filepath_spec, method,
   # Block until everything is complete
   while (!all(map_lgl(futures, "printed"))) {
     Sys.sleep(1)
-    futures <- print_resolved_futures(futures)
+    futures <- process_resolved_futures(futures, cache)
+    print(cache$data)
   }
   # TODO: last time this target took XX (time per target), this time it took XX
 
@@ -168,7 +173,7 @@ run_target <- function(these_dims, printer,
   # Get the hashes of the last run
   # (there may be multiple bc of unspecified dimensions... so
   # we must check that hash is equal across all these)
-  target_hash <- path_ext_remove(filepath_spec_partial) %>%
+  target_hash <- filepath_spec_partial %>%
     read_matching_targets_cache(cache) %>%
     map("hash") %>%
     unique()
@@ -183,15 +188,15 @@ run_target <- function(these_dims, printer,
       !options$force_rebuild) {
 
     # TODO: Check that the result files still exist??
-    printer("Target is up to date. ", # `", path_ext_remove(filepath_spec_partial), "`
-        sample(encouragement, 1))
+    printer("Target is up to date. ", sample(encouragement, 1))
     return()
   }
 
   # OK let's build this frickin target then
-  printer("Running target...") #`", path_ext_remove(filepath_spec_partial), "`
+  printer("Running target...")
   start_time <- Sys.time()
   times <- list()
+  cache_updates <- list()
 
   timer_phase_end <- function(phase_name = "Unnamed phase") {
     end_time <- Sys.time()
@@ -214,7 +219,12 @@ run_target <- function(these_dims, printer,
   }
 
   # TODO what to do when func doesn't have a save_target in it?
-  save_target <- function(result, ...) {
+  save_target <- function(result = NULL, cache_updates_only = F, ...) {
+    if (cache_updates_only) {
+      print("NOPEEE")
+      str(cache_updates)
+      return(cache_updates)
+    }
     timer_phase_end("Processing")
     printer("Saving ", list_to_str(list(...)), "...")
 
@@ -223,19 +233,21 @@ run_target <- function(these_dims, printer,
     metadata <- save_target_result(filepath, result)
 
     timer_phase_end("Saving")
-    upsert_target_cache(
-      cache = cache,
-      target = path_ext_remove(filepath),
-      val = list(
-        hash = trackables_hash,
-        build_min = times,
-        metadata = metadata
-      )
+    cache_updates[[filepath]] <<- list(
+      hash = trackables_hash,
+      build_min = times,
+      metadata = metadata
     )
+    print("hiii")
+    str(cache_updates)
     times <<- list()
     start_time <<- Sys.time()
     invisible()
   }
+
+  # get_cache_updates <- function() {
+  #   cache_updates
+  # }
 
   # Special values for use inside method
   environment(pure_method$value) %>%
@@ -243,6 +255,7 @@ run_target <- function(these_dims, printer,
       .dimensions = these_dims,
       .cache = cache,
       .realcat = cat,
+      # get_cache_updates = get_cache_updates,
       cat = printer,
       save_target = save_target,
       timer_phase_end = timer_phase_end
@@ -254,9 +267,6 @@ run_target <- function(these_dims, printer,
   # packages_to_load <- pure_method$trackables$globals %>%
   #   map_chr("package") %>%
   #   unique()
-
-  # TODO: futures return the cache update item, target() collects
-  # and writes yaml -- save_target does not write yaml
 
   # Git 'r dun
   this_future <- future({
@@ -271,21 +281,34 @@ run_target <- function(these_dims, printer,
     rm(loaded_args)
     gc()
     printer("Complete!")
+    print(cache_updates)
+    # print(get_cache_updates())
+    print(do.call(save_target, list(cache_updates_only = T), envir = environment(pure_method$value)))
+
+    # Return to main process for writing yaml
+    cache_updates
 
   })
 
   return(this_future)
 }
 
-#' @importFrom future resolve resolved
-print_resolved_futures <- function(futures_list) {
+#' @importFrom future resolve resolved value
+#' @importFrom purrr iwalk
+process_resolved_futures <- function(futures_list, cache) {
   map(futures_list, function(pending_target) {
-    # If it's resolved, get the value.
+    # If it's resolved, get the value and update cache.
     # This prints anything that was logged. It's useful to do this
     # as soon as we see it was resolved so logging is as
     # contemporaneous as possible
     if (!pending_target$printed && resolved(pending_target$future)) {
-      resolve(pending_target, stdout = T, signal = T)
+      cache_updates <- value(pending_target$future, stdout = T, signal = T)
+      browser()
+      iwalk(cache_updates, function(target, val) {
+        cache <<- modify_cache(target, val, cache)
+        print(cache$data)
+      })
+      write_cache(cache)
       pending_target$printed <- TRUE
     }
     return(pending_target)
