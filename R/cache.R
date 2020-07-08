@@ -24,8 +24,8 @@ get_cache <- function(path) {
 }
 
 #' @export
-print.workshop_cache <- function(x, ...) {
-  cat("<workshop cache with path:", x$path, ">\n", ...)
+as.character.workshop_cache <- function(x, ...) {
+  return(str_c("<workshop cache with path: ", x$path, ">\n", ...))
 }
 
 # TODO: error if cache permissions issue?
